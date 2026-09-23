@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node server.js",
     "test": "node --test",
-    "start": "node server.js"
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
@@ -21,5 +22,9 @@
   "homepage": "https://github.com/AdiWasmatkar/Student-Skill-Exchange#readme",
   "dependencies": {
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0"
   }
 }
