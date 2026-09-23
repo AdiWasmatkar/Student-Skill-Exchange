@@ -129,3 +129,23 @@ test('GET /api/skills returns JSON skills', async () => {
   assert.ok(Array.isArray(data));
   assert.equal(data.length, 2);
 });
+
+test('GET /api/requests returns JSON requests', async () => {
+  const response = await fetch(`${baseUrl}/api/requests`);
+
+  assert.equal(response.status, 200);
+
+  const data = await response.json();
+
+  assert.equal(Array.isArray(data), true);
+});
+
+test('GET /api/skills returns JSON content type', async () => {
+  const response = await fetch(`${baseUrl}/api/skills`);
+
+  assert.equal(response.status, 200);
+
+  const contentType = response.headers.get('content-type');
+
+  assert.match(contentType, /application\/json/);
+});
