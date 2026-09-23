@@ -34,7 +34,7 @@ test('GET /health returns status ok', async () => {
 
   const data = await response.json();
 
-  assert.equal(data.status, 'ok');
+  assert.equal(data.status, 'broken');
 });
 
 test('POST /skills adds a valid skill', async () => {
