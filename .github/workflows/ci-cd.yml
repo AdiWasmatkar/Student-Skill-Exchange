@@ -66,14 +66,13 @@ jobs:
         if: always()
         run: docker stop skill-exchange || true
 
-   deploy:
+  deploy:
     name: Deploy to Render
     needs: docker-build
-    if: github.event_name == 'pull_request' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
       - name: Trigger Render deployment
         run: |
-          echo "Intentional deployment failure for CI/CD demonstration"
-          exit 1
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
