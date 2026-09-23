@@ -66,7 +66,7 @@ jobs:
         if: always()
         run: docker stop skill-exchange || true
 
-   deploy:
+  deploy:
     name: Deploy to Render
     needs: docker-build
     if: github.event_name == 'pull_request' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
