@@ -33,131 +33,200 @@ let nextRequestId = 1;
 // --------------------------------------------------
 // HOME PAGE
 // --------------------------------------------------
-app.get('/', (req, res) => {
 
-  const search = req.query.search || '';
-  const category = req.query.category || '';
-  const level = req.query.level || '';
+app.get('/', (req, res) => {
+  const search =
+    typeof req.query.search === 'string'
+      ? req.query.search.trim().toLowerCase()
+      : '';
 
   const filteredSkills = skills.filter((skill) => {
+    if (!search) {
+      return true;
+    }
 
-    const matchesSearch =
-      skill.name.toLowerCase().includes(search.toLowerCase());
-
-    const matchesCategory =
-      !category || skill.category === category;
-
-    const matchesLevel =
-      !level || skill.level === level;
-
-    return matchesSearch && matchesCategory && matchesLevel;
+    return (
+      skill.name.toLowerCase().includes(search) ||
+      skill.category.toLowerCase().includes(search) ||
+      skill.owner.toLowerCase().includes(search)
+    );
   });
 
-  const skillCards = filteredSkills.map((skill) => `
-    <div class="skill-card">
-      <div class="skill-top">
-        <div>
+  const skillCards = filteredSkills
+    .map(
+      (skill) => `
+        <div class="skill-card">
+
+          <div class="skill-icon">
+            ${skill.name.charAt(0).toUpperCase()}
+          </div>
+
+          <div class="skill-category">
+            ${skill.category}
+          </div>
+
           <h3>${skill.name}</h3>
-          <span class="category">${skill.category}</span>
+
+          <p class="skill-owner">
+            👤 Offered by <strong>${skill.owner}</strong>
+          </p>
+
+          <div class="skill-tags">
+            <span class="tag">📈 ${skill.level}</span>
+            <span class="tag">🕒 ${skill.availability}</span>
+          </div>
+
+          <div class="request-section">
+
+            <h4>Want to learn this?</h4>
+
+            <form method="POST" action="/requests">
+
+              <input
+                type="hidden"
+                name="skillId"
+                value="${skill.id}"
+              >
+
+              <input
+                type="text"
+                name="studentName"
+                placeholder="Your name"
+                required
+              >
+
+              <textarea
+                name="message"
+                placeholder="Why do you want to learn ${skill.name}?"
+                required
+              ></textarea>
+
+              <button type="submit">
+                Request Skill →
+              </button>
+
+            </form>
+
+          </div>
+
         </div>
-        <span class="level">${skill.level}</span>
-      </div>
+      `
+    )
+    .join('');
 
-      <div class="skill-info">
-        <p><strong>👤 Offered by:</strong> ${skill.owner}</p>
-        <p><strong>🕒 Available:</strong> ${skill.availability}</p>
-      </div>
+  const requestCards =
+    requests.length === 0
+      ? `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <h3>No learning requests yet</h3>
+          <p>
+            When students request a skill, their requests will appear here.
+          </p>
+        </div>
+      `
+      : requests
+          .map(
+            (request) => `
+              <div class="request-card">
 
-      <form method="POST" action="/requests" class="request-form">
-        <input
-          type="hidden"
-          name="skillId"
-          value="${skill.id}"
-        >
+                <div class="request-header">
 
-        <input
-          type="text"
-          name="studentName"
-          placeholder="Your name"
-          required
-        >
+                  <div>
+                    <span class="request-label">
+                      LEARNING REQUEST
+                    </span>
 
-        <textarea
-          name="message"
-          placeholder="Why do you want to learn this skill?"
-          required
-        ></textarea>
+                    <h3>${request.skillName}</h3>
+                  </div>
 
-        <button type="submit">
-          📩 Request to Learn
-        </button>
-      </form>
-    </div>
-  `).join('');
-
-  const requestRows = requests.length
-    ? requests.map((request) => `
-        <tr>
-          <td>${request.studentName}</td>
-          <td>${request.skillName}</td>
-          <td>${request.message}</td>
-         <td>
-          <span class="status ${request.status.toLowerCase()}">
-            ${request.status}
-          </span>
-
-          ${
-            request.status === 'Pending'
-              ? `
-                <div class="request-actions">
-
-                  <form method="POST" action="/requests/${request.id}/status">
-                    <input
-                      type="hidden"
-                      name="status"
-                      value="Accepted"
-                    >
-                    <button type="submit" class="accept-btn">
-                      ✅ Accept
-                    </button>
-                  </form>
-
-                  <form method="POST" action="/requests/${request.id}/status">
-                    <input
-                      type="hidden"
-                      name="status"
-                      value="Rejected"
-                    >
-                    <button type="submit" class="reject-btn">
-                      ❌ Reject
-                    </button>
-                  </form>
+                  <span class="status ${request.status.toLowerCase()}">
+                    ${request.status}
+                  </span>
 
                 </div>
-              `
-              : ''
-          }
-        </td>
-        </tr>
-      `).join('')
-    : `
-      <tr>
-        <td colspan="4" class="empty">
-          No learning requests yet.
-        </td>
-      </tr>
-    `;
+
+                <div class="request-details">
+
+                  <div>
+                    <span>Student</span>
+                    <strong>👤 ${request.studentName}</strong>
+                  </div>
+
+                  <div>
+                    <span>Message</span>
+                    <strong>${request.message}</strong>
+                  </div>
+
+                </div>
+
+                <form
+                  method="POST"
+                  action="/requests/${request.id}/status"
+                  class="status-form"
+                >
+
+                  <select name="status">
+
+                    <option
+                      value="Pending"
+                      ${request.status === 'Pending' ? 'selected' : ''}
+                    >
+                      Pending
+                    </option>
+
+                    <option
+                      value="Accepted"
+                      ${request.status === 'Accepted' ? 'selected' : ''}
+                    >
+                      Accepted
+                    </option>
+
+                    <option
+                      value="Rejected"
+                      ${request.status === 'Rejected' ? 'selected' : ''}
+                    >
+                      Rejected
+                    </option>
+
+                    <option
+                      value="Completed"
+                      ${request.status === 'Completed' ? 'selected' : ''}
+                    >
+                      Completed
+                    </option>
+
+                  </select>
+
+                  <button type="submit">
+                    Update Status
+                  </button>
+
+                </form>
+
+              </div>
+            `
+          )
+          .join('');
 
   res.send(`
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>Student Skill Exchange</title>
 
   <style>
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -165,674 +234,1034 @@ app.get('/', (req, res) => {
     }
 
     body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f4f7fb;
-      color: #1f2937;
-      line-height: 1.5;
+      font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+      background: #f6f7fb;
+
+      color: #172033;
+
+      line-height: 1.6;
     }
 
-    /* NAVBAR */
+    /* ---------------- NAVBAR ---------------- */
 
     .navbar {
-      background: #111827;
-      color: white;
-      padding: 18px 40px;
+      height: 72px;
+
       display: flex;
-      justify-content: space-between;
+
       align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+
+      justify-content: space-between;
+
+      max-width: 1180px;
+
+      margin: auto;
+
+      padding: 0 25px;
     }
 
-    .navbar h1 {
-      font-size: 22px;
+    .brand {
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+
+      color: white;
+
+      font-size: 20px;
+
+      font-weight: 800;
     }
 
-    .navbar p {
-      color: #9ca3af;
+    .brand-icon {
+      width: 38px;
+
+      height: 38px;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      background: rgba(255,255,255,0.15);
+
+      border-radius: 11px;
+
+      font-size: 20px;
+    }
+
+    .nav-pill {
+      padding: 8px 15px;
+
+      border-radius: 999px;
+
+      background: rgba(255,255,255,0.13);
+
+      border: 1px solid rgba(255,255,255,0.2);
+
+      color: white;
+
       font-size: 13px;
+
+      font-weight: 600;
     }
 
-    /* MAIN CONTAINER */
-
-    .container {
-      max-width: 1200px;
-      margin: 30px auto;
-      padding: 0 20px;
-    }
-
-    /* HERO */
+    /* ---------------- HERO ---------------- */
 
     .hero {
-      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      background:
+        radial-gradient(
+          circle at top right,
+          rgba(255,255,255,0.18),
+          transparent 35%
+        ),
+        linear-gradient(
+          135deg,
+          #4338ca,
+          #6366f1 55%,
+          #7c3aed
+        );
+
       color: white;
-      padding: 40px;
-      border-radius: 18px;
-      margin-bottom: 25px;
-      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.2);
+
+      padding-bottom: 105px;
     }
 
-    .hero h2 {
-      font-size: 34px;
-      margin-bottom: 10px;
+    .hero-content {
+      max-width: 1180px;
+
+      margin: auto;
+
+      padding: 55px 25px 0;
     }
 
-    .hero p {
-      color: #dbeafe;
-      max-width: 700px;
-      font-size: 16px;
+    .hero-content h1 {
+      max-width: 780px;
+
+      font-size: clamp(42px, 6vw, 68px);
+
+      line-height: 1.05;
+
+      letter-spacing: -3px;
+
+      margin-bottom: 22px;
     }
 
-    .hero-buttons {
-      margin-top: 20px;
+    .hero-content p {
+      max-width: 650px;
+
+      font-size: 19px;
+
+      color: rgba(255,255,255,0.84);
     }
 
-    .hero-button {
-      display: inline-block;
-      background: white;
-      color: #2563eb;
-      padding: 10px 18px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: bold;
-      margin-right: 8px;
+    .hero-stats {
+      display: flex;
+
+      gap: 15px;
+
+      margin-top: 32px;
+
+      flex-wrap: wrap;
     }
 
-    /* STATS */
+    .hero-stat {
+      padding: 10px 16px;
 
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 18px;
-      margin-bottom: 25px;
+      border-radius: 12px;
+
+      background: rgba(255,255,255,0.12);
+
+      border: 1px solid rgba(255,255,255,0.18);
+
+      font-size: 14px;
     }
 
-    .stat-card {
-      background: white;
-      padding: 22px;
-      border-radius: 14px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
-      border: 1px solid #e5e7eb;
-    }
+    /* ---------------- MAIN ---------------- */
 
-    .stat-icon {
-      font-size: 25px;
-      margin-bottom: 8px;
-    }
+    main {
+      max-width: 1180px;
 
-    .stat-card h3 {
-      font-size: 28px;
-      color: #2563eb;
-    }
+      margin: -55px auto 60px;
 
-    .stat-card p {
-      color: #6b7280;
-      margin-top: 3px;
+      padding: 0 25px;
     }
-
-    /* SECTION */
 
     .section {
+      margin-bottom: 32px;
+    }
+
+    .section-card {
       background: white;
-      padding: 25px;
-      border-radius: 14px;
-      margin-bottom: 25px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-      border: 1px solid #e5e7eb;
+
+      border: 1px solid #e6e8f0;
+
+      border-radius: 22px;
+
+      padding: 28px;
+
+      box-shadow:
+        0 15px 45px rgba(30, 41, 59, 0.07);
     }
 
-    .section-header {
-      margin-bottom: 20px;
+    .section-heading {
+      margin-bottom: 22px;
     }
 
-    .section-header h2 {
-      margin-bottom: 5px;
+    .section-heading h2 {
+      font-size: 26px;
+
+      letter-spacing: -0.7px;
     }
 
-    .section-header p {
+    .section-heading p {
+      margin-top: 4px;
+
       color: #6b7280;
+
       font-size: 14px;
     }
 
-    /* SKILLS */
+    /* ---------------- SEARCH ---------------- */
 
-    .skills-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 18px;
-    }
-
-    .skill-card {
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 20px;
-      background: #ffffff;
-      transition: 0.2s ease;
-    }
-
-    .skill-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-      border-color: #bfdbfe;
-    }
-
-    .skill-top {
+    .search-container {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+
       gap: 10px;
-      margin-bottom: 15px;
     }
 
-    .skill-card h3 {
-      color: #111827;
-      font-size: 20px;
-      margin-bottom: 5px;
+    .search-container input {
+      flex: 1;
     }
 
-    .category {
-      display: inline-block;
-      font-size: 12px;
-      color: #2563eb;
-      background: #eff6ff;
-      padding: 4px 9px;
-      border-radius: 20px;
-    }
-
-    .level {
-      background: #f3f4f6;
-      color: #374151;
-      padding: 5px 9px;
-      border-radius: 20px;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .skill-info {
-      margin-bottom: 15px;
-    }
-
-    .skill-info p {
-      color: #6b7280;
-      font-size: 14px;
-      margin: 6px 0;
-    }
-
-    /* SEARCH & FILTER */
-
-      .search-box {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr auto;
-        gap: 10px;
-        margin-bottom: 20px;
-        padding: 15px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-      }
-
-      .search-box button {
-        white-space: nowrap;
-      }
-
-      @media (max-width: 700px) {
-        .search-box {
-          grid-template-columns: 1fr;
-        }
-      }
-    
-    /* FORMS */
-
-    .request-form {
-      display: grid;
-      gap: 10px;
-      border-top: 1px solid #e5e7eb;
-      padding-top: 15px;
-    }
+    /* ---------------- INPUTS ---------------- */
 
     input,
-    select,
-    textarea {
+    textarea,
+    select {
       width: 100%;
-      padding: 11px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 14px;
+
+      border: 1px solid #dcdfea;
+
+      border-radius: 12px;
+
+      padding: 12px 14px;
+
       font-family: inherit;
+
+      font-size: 14px;
+
+      color: #172033;
+
+      background: white;
+
       outline: none;
+
+      transition: 0.2s;
     }
 
     input:focus,
-    select:focus,
-    textarea:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    textarea:focus,
+    select:focus {
+      border-color: #6366f1;
+
+      box-shadow:
+        0 0 0 4px rgba(99,102,241,0.12);
     }
 
     textarea {
-      min-height: 75px;
+      min-height: 90px;
+
       resize: vertical;
     }
 
     button {
-      background: #2563eb;
-      color: white;
       border: none;
-      padding: 11px 18px;
-      border-radius: 8px;
+
+      border-radius: 11px;
+
+      padding: 12px 18px;
+
+      background: #4f46e5;
+
+      color: white;
+
+      font-family: inherit;
+
+      font-weight: 700;
+
       cursor: pointer;
-      font-weight: bold;
+
       transition: 0.2s;
     }
 
     button:hover {
-      background: #1d4ed8;
+      background: #4338ca;
+
       transform: translateY(-1px);
     }
 
-    /* ADD SKILL */
+    /* ---------------- OFFER FORM ---------------- */
 
-    .add-skill-form {
+    .offer-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+      gap: 16px;
     }
 
-    .add-skill-form button {
-      grid-column: 1 / -1;
+    .form-field {
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 7px;
     }
 
-    /* REQUEST ACTIONS */
+    .form-field label {
+      font-size: 13px;
 
-      .request-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 10px;
-      }
+      font-weight: 700;
 
-      .request-actions form {
-        display: inline;
-      }
-
-      .request-actions button {
-        padding: 7px 10px;
-        font-size: 12px;
-      }
-
-      .accept-btn {
-        background: #16a34a;
-      }
-
-      .accept-btn:hover {
-        background: #15803d;
-      }
-
-      .reject-btn {
-        background: #dc2626;
-      }
-
-      .reject-btn:hover {
-        background: #b91c1c;
-      }
-
-    /* REQUEST TABLE */
-
-    .table-wrapper {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 700px;
-    }
-
-    th,
-    td {
-      text-align: left;
-      padding: 13px;
-      border-bottom: 1px solid #e5e7eb;
-      font-size: 14px;
-    }
-
-    th {
-      background: #f9fafb;
       color: #374151;
     }
 
-    .status {
-      display: inline-block;
-      padding: 5px 10px;
+    .form-full {
+      grid-column: 1 / -1;
+    }
+
+    .offer-button {
+      margin-top: 5px;
+    }
+
+    /* ---------------- SKILLS ---------------- */
+
+    .skills-grid {
+      display: grid;
+
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+      gap: 20px;
+    }
+
+    .skill-card {
+      background: white;
+
+      border: 1px solid #e5e7eb;
+
       border-radius: 20px;
+
+      padding: 23px;
+
+      transition: 0.25s;
+
+      box-shadow:
+        0 8px 25px rgba(15,23,42,0.04);
+    }
+
+    .skill-card:hover {
+      transform: translateY(-5px);
+
+      box-shadow:
+        0 18px 38px rgba(15,23,42,0.1);
+
+      border-color: #c7d2fe;
+    }
+
+    .skill-icon {
+      width: 48px;
+
+      height: 48px;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      border-radius: 14px;
+
+      background: #eef2ff;
+
+      color: #4f46e5;
+
+      font-size: 21px;
+
+      font-weight: 800;
+
+      margin-bottom: 15px;
+    }
+
+    .skill-category {
+      color: #6366f1;
+
       font-size: 12px;
-      font-weight: bold;
+
+      font-weight: 800;
+
+      text-transform: uppercase;
+
+      letter-spacing: 0.8px;
     }
 
-    .pending {
-      background: #fef3c7;
-      color: #92400e;
+    .skill-card h3 {
+      font-size: 23px;
+
+      margin: 3px 0 5px;
+
+      letter-spacing: -0.5px;
     }
 
-    .accepted {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .rejected {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .empty {
-      text-align: center;
+    .skill-owner {
       color: #6b7280;
-      padding: 25px;
+
+      font-size: 14px;
     }
 
-    /* FOOTER */
+    .skill-tags {
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 8px;
+
+      margin: 16px 0;
+    }
+
+    .tag {
+      background: #f1f5f9;
+
+      color: #475569;
+
+      padding: 5px 10px;
+
+      border-radius: 999px;
+
+      font-size: 12px;
+
+      font-weight: 700;
+    }
+
+    .request-section {
+      border-top: 1px solid #edf0f5;
+
+      padding-top: 18px;
+
+      margin-top: 18px;
+    }
+
+    .request-section h4 {
+      margin-bottom: 12px;
+
+      font-size: 15px;
+    }
+
+    .request-section form {
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 10px;
+    }
+
+    /* ---------------- REQUESTS ---------------- */
+
+    .requests-list {
+      display: grid;
+
+      gap: 15px;
+    }
+
+    .request-card {
+      border: 1px solid #e5e7eb;
+
+      border-radius: 17px;
+
+      padding: 20px;
+
+      background: #fafbff;
+    }
+
+    .request-header {
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: flex-start;
+
+      gap: 15px;
+    }
+
+    .request-label {
+      font-size: 10px;
+
+      font-weight: 800;
+
+      letter-spacing: 1px;
+
+      color: #6366f1;
+    }
+
+    .request-card h3 {
+      font-size: 20px;
+
+      margin-top: 3px;
+    }
+
+    .status {
+      padding: 6px 12px;
+
+      border-radius: 999px;
+
+      font-size: 11px;
+
+      font-weight: 800;
+    }
+
+    .status.pending {
+      background: #fff7ed;
+
+      color: #c2410c;
+    }
+
+    .status.accepted {
+      background: #ecfdf5;
+
+      color: #047857;
+    }
+
+    .status.rejected {
+      background: #fef2f2;
+
+      color: #b91c1c;
+    }
+
+    .status.completed {
+      background: #eff6ff;
+
+      color: #1d4ed8;
+    }
+
+    .request-details {
+      display: grid;
+
+      grid-template-columns:
+        180px 1fr;
+
+      gap: 15px;
+
+      margin: 18px 0;
+    }
+
+    .request-details div {
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 3px;
+    }
+
+    .request-details span {
+      font-size: 11px;
+
+      color: #9ca3af;
+
+      text-transform: uppercase;
+
+      font-weight: 800;
+
+      letter-spacing: 0.5px;
+    }
+
+    .request-details strong {
+      font-size: 14px;
+
+      font-weight: 600;
+    }
+
+    .status-form {
+      display: flex;
+
+      gap: 10px;
+
+      max-width: 400px;
+    }
+
+    /* ---------------- EMPTY ---------------- */
+
+    .empty-state {
+      text-align: center;
+
+      padding: 45px 20px;
+
+      border: 1px dashed #d8dce7;
+
+      border-radius: 17px;
+
+      color: #6b7280;
+    }
+
+    .empty-icon {
+      font-size: 38px;
+
+      margin-bottom: 8px;
+    }
+
+    .empty-state h3 {
+      color: #374151;
+
+      margin-bottom: 5px;
+    }
+
+    /* ---------------- FOOTER ---------------- */
+
+    footer {
+      text-align: center;
+
+      color: #6b7280;
+
+      font-size: 13px;
+
+      padding: 30px 20px 45px;
+    }
+
+    .footer-title {
+      font-weight: 700;
+
+      color: #374151;
+
+      margin-bottom: 4px;
+    }
 
     .commit {
-      text-align: center;
-      padding: 25px;
-      color: #6b7280;
-      font-size: 13px;
-    }
-
-    .commit span {
       font-family: monospace;
-      background: #e5e7eb;
-      padding: 3px 7px;
-      border-radius: 5px;
+
+      color: #6366f1;
+
+      margin-top: 5px;
     }
 
-    /* RESPONSIVE */
+    /* ---------------- RESPONSIVE ---------------- */
 
-    @media (max-width: 700px) {
-      .navbar {
-        padding: 15px 20px;
-      }
-
-      .navbar p {
-        display: none;
-      }
-
-      .hero {
-        padding: 28px 22px;
-      }
-
-      .hero h2 {
-        font-size: 26px;
-      }
-
-      .stats {
-        grid-template-columns: 1fr;
-      }
-
-      .add-skill-form {
-        grid-template-columns: 1fr;
-      }
-
-      .add-skill-form button {
-        grid-column: auto;
-      }
+    @media (max-width: 800px) {
 
       .skills-grid {
         grid-template-columns: 1fr;
       }
+
+      .offer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-full {
+        grid-column: auto;
+      }
+
+      .request-details {
+        grid-template-columns: 1fr;
+      }
+
     }
+
+    @media (max-width: 600px) {
+
+      .navbar {
+        padding: 0 18px;
+      }
+
+      .hero-content {
+        padding-left: 20px;
+
+        padding-right: 20px;
+      }
+
+      .hero-content h1 {
+        font-size: 42px;
+
+        letter-spacing: -2px;
+      }
+
+      main {
+        padding: 0 15px;
+      }
+
+      .section-card {
+        padding: 20px;
+      }
+
+      .search-container {
+        flex-direction: column;
+      }
+
+      .request-header {
+        flex-direction: column;
+      }
+
+      .status-form {
+        flex-direction: column;
+      }
+
+    }
+
   </style>
+
 </head>
 
 <body>
 
-  <!-- NAVBAR -->
+  <!-- ================= HERO ================= -->
 
-  <nav class="navbar">
-    <h1>🎓 Student Skill Exchange</h1>
-    <p>Learn • Teach • Connect</p>
-  </nav>
+  <header class="hero">
 
-  <main class="container">
+    <nav class="navbar">
 
-    <!-- HERO -->
+      <div class="brand">
 
-    <section class="hero">
-      <h2>Share Skills. Learn Together. 🚀</h2>
+        <div class="brand-icon">
+          🎓
+        </div>
+
+        Student Skill Exchange
+
+      </div>
+
+      <div class="nav-pill">
+        Student Community
+      </div>
+
+    </nav>
+
+    <div class="hero-content">
+
+      <h1>
+        Share skills.<br>
+        Learn together.
+      </h1>
 
       <p>
-        Student Skill Exchange is a platform where students can
-        share their skills and connect with other students who want
-        to learn.
+        A student-powered platform where you can
+        share what you know, discover new skills,
+        and connect with students who want to learn.
       </p>
 
-      <div class="hero-buttons">
-        <a href="#skills" class="hero-button">
-          Explore Skills
-        </a>
+      <div class="hero-stats">
 
-        <a href="#add-skill" class="hero-button">
-          Offer a Skill
-        </a>
+        <div class="hero-stat">
+          🎯 Peer Learning
+        </div>
+
+        <div class="hero-stat">
+          🤝 Skill Exchange
+        </div>
+
+        <div class="hero-stat">
+          🚀 Grow Together
+        </div>
+
       </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- ================= MAIN ================= -->
+
+  <main>
+
+
+    <!-- SEARCH -->
+
+    <section class="section">
+
+      <div class="section-card">
+
+        <div class="section-heading">
+
+          <h2>
+            🔎 Find a Skill
+          </h2>
+
+          <p>
+            Search by skill, category, or student.
+          </p>
+
+        </div>
+
+        <form
+          method="GET"
+          action="/"
+          class="search-container"
+        >
+
+          <input
+            type="text"
+            name="search"
+            placeholder="Try Python, Design, Programming..."
+            value="${search}"
+          >
+
+          <button type="submit">
+            Search
+          </button>
+
+          <a
+            href="/"
+            style="
+              display:flex;
+              align-items:center;
+              padding:0 12px;
+              color:#6366f1;
+              text-decoration:none;
+              font-weight:700;
+            "
+          >
+            Clear
+          </a>
+
+        </form>
+
+      </div>
+
     </section>
 
-    <!-- STATISTICS -->
 
-    <section class="stats">
+    <!-- OFFER SKILL -->
 
-      <div class="stat-card">
-        <div class="stat-icon">💡</div>
-        <h3>${skills.length}</h3>
-        <p>Skills Available</p>
-      </div>
+    <section class="section">
 
-      <div class="stat-card">
-        <div class="stat-icon">📚</div>
-        <h3>${new Set(skills.map((skill) => skill.category)).size}</h3>
-        <p>Skill Categories</p>
-      </div>
+      <div class="section-card">
 
-      <div class="stat-card">
-        <div class="stat-icon">📩</div>
-        <h3>${requests.length}</h3>
-        <p>Learning Requests</p>
+        <div class="section-heading">
+
+          <h2>
+            ✨ Offer Your Skill
+          </h2>
+
+          <p>
+            Share something you're good at and help another student learn.
+          </p>
+
+        </div>
+
+        <form
+          method="POST"
+          action="/skills"
+          class="offer-grid"
+        >
+
+          <div class="form-field">
+
+            <label>
+              Skill Name
+            </label>
+
+            <input
+              type="text"
+              name="name"
+              placeholder="e.g. Python"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-field">
+
+            <label>
+              Category
+            </label>
+
+            <input
+              type="text"
+              name="category"
+              placeholder="e.g. Programming"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-field">
+
+            <label>
+              Your Name
+            </label>
+
+            <input
+              type="text"
+              name="owner"
+              placeholder="e.g. Aditya"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-field">
+
+            <label>
+              Skill Level
+            </label>
+
+            <select
+              name="level"
+              required
+            >
+
+              <option value="">
+                Select level
+              </option>
+
+              <option value="Beginner">
+                Beginner
+              </option>
+
+              <option value="Intermediate">
+                Intermediate
+              </option>
+
+              <option value="Advanced">
+                Advanced
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="form-field form-full">
+
+            <label>
+              Availability
+            </label>
+
+            <input
+              type="text"
+              name="availability"
+              placeholder="e.g. Weekends / Evenings"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-field form-full">
+
+            <button
+              type="submit"
+              class="offer-button"
+            >
+              + Add My Skill
+            </button>
+
+          </div>
+
+        </form>
+
       </div>
 
     </section>
+
 
     <!-- AVAILABLE SKILLS -->
 
-    <section class="section" id="skills">
+    <section class="section">
 
-           <div class="section-header">
-        <h2>🌟 Available Skills</h2>
+      <div class="section-heading">
+
+        <h2>
+          🌟 Available Skills
+        </h2>
 
         <p>
-          Explore skills offered by fellow students and send a
-          learning request.
+          Discover students who are ready to share their knowledge.
         </p>
-      </div>
-
-      <form method="GET" action="/" class="search-box">
-
-        <input
-          type="text"
-          name="search"
-          placeholder="🔍 Search skill..."
-          value="${search}"
-        >
-
-        <select name="category">
-
-          <option value="">All Categories</option>
-
-          ${[...new Set(skills.map((skill) => skill.category))]
-            .map((cat) => `
-              <option
-                value="${cat}"
-                ${category === cat ? 'selected' : ''}
-              >
-                ${cat}
-              </option>
-            `)
-            .join('')}
-
-        </select>
-
-        <select name="level">
-
-          <option value="">All Levels</option>
-
-          <option
-            value="Beginner"
-            ${level === 'Beginner' ? 'selected' : ''}
-          >
-            Beginner
-          </option>
-
-          <option
-            value="Intermediate"
-            ${level === 'Intermediate' ? 'selected' : ''}
-          >
-            Intermediate
-          </option>
-
-          <option
-            value="Advanced"
-            ${level === 'Advanced' ? 'selected' : ''}
-          >
-            Advanced
-          </option>
-
-        </select>
-
-        <button type="submit">
-          🔍 Search
-        </button>
-
-      </form>
-
-      <div class="skills-grid">
-
-        ${skillCards}
 
       </div>
+
+      ${
+        skillCards
+          ? `<div class="skills-grid">${skillCards}</div>`
+          : `
+            <div class="empty-state">
+              <div class="empty-icon">🔍</div>
+
+              <h3>
+                No matching skills found
+              </h3>
+
+              <p>
+                Try searching for another skill or category.
+              </p>
+            </div>
+          `
+      }
 
     </section>
 
-    <!-- ADD SKILL -->
-
-    <section class="section" id="add-skill">
-
-      <div class="section-header">
-        <h2>➕ Offer Your Skill</h2>
-
-        <p>
-          Share something you know and help another student learn.
-        </p>
-      </div>
-
-      <form method="POST" action="/skills" class="add-skill-form">
-
-        <input
-          type="text"
-          name="name"
-          placeholder="Skill name (e.g. Python)"
-          required
-        >
-
-        <input
-          type="text"
-          name="category"
-          placeholder="Category (e.g. Programming)"
-          required
-        >
-
-        <input
-          type="text"
-          name="owner"
-          placeholder="Your name"
-          required
-        >
-
-        <select name="level" required>
-          <option value="">Select skill level</option>
-          <option value="Beginner">Beginner</option>
-          <option value="Intermediate">Intermediate</option>
-          <option value="Advanced">Advanced</option>
-        </select>
-
-        <input
-          type="text"
-          name="availability"
-          placeholder="Availability (e.g. Weekends)"
-          required
-        >
-
-        <button type="submit">
-          ➕ Add Skill
-        </button>
-
-      </form>
-
-    </section>
 
     <!-- LEARNING REQUESTS -->
 
     <section class="section">
 
-      <div class="section-header">
-        <h2>📋 Learning Requests</h2>
+      <div class="section-heading">
+
+        <h2>
+          📚 Learning Requests
+        </h2>
 
         <p>
-          Recent requests submitted by students.
+          Track and manage student learning requests.
         </p>
+
       </div>
 
-      <div class="table-wrapper">
+      <div class="requests-list">
 
-        <table>
-
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Skill</th>
-              <th>Message</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            ${requestRows}
-
-          </tbody>
-
-        </table>
+        ${requestCards}
 
       </div>
 
     </section>
 
+
   </main>
 
-  <!-- FOOTER -->
 
-  <footer class="commit">
+  <!-- ================= FOOTER ================= -->
 
-    Student Skill Exchange • MIT-WPU
+  <footer>
 
-    <br>
+    <div class="footer-title">
+      🎓 Student Skill Exchange
+    </div>
 
-    Running commit:
-    <span>
+    <div>
+      Built for Cloud Computing & DevOps CCA 2
+    </div>
+
+    <div class="commit">
+      Running commit:
       ${process.env.RENDER_GIT_COMMIT || 'local'}
-    </span>
+    </div>
 
   </footer>
 
+
 </body>
+
 </html>
   `);
 });
@@ -852,7 +1281,6 @@ app.post('/skills', (req, res) => {
     availability
   } = req.body;
 
-  // Validate required fields
   if (
     !name ||
     !category ||
@@ -870,7 +1298,7 @@ app.post('/skills', (req, res) => {
     name: name.trim(),
     category: category.trim(),
     owner: owner.trim(),
-    level: level.trim(),
+    level,
     availability: availability.trim()
   };
 
@@ -878,6 +1306,7 @@ app.post('/skills', (req, res) => {
 
   return res.redirect('/');
 });
+
 
 // --------------------------------------------------
 // CREATE LEARNING REQUEST
